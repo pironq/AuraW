@@ -40,6 +40,10 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="create-wallet" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="import-wallet" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="generating" options={{ animation: 'fade', gestureEnabled: false }} />
+        <Stack.Screen name="seed-phrase" options={{ animation: 'fade', gestureEnabled: false }} />
+        <Stack.Screen name="verify-phrase" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="wallet-ready" options={{ animation: 'fade', gestureEnabled: false }} />
       </Stack>
     </ThemeProvider>
   );

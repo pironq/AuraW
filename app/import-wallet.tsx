@@ -305,7 +305,7 @@ export default function ImportWalletScreen() {
         <Animated.View style={[styles.bottomSection, animStyle]}>
           <Pressable
             onPress={() => {
-              // TODO: Validate and import wallet
+              router.push({ pathname: '/generating', params: { mode: 'import' } });
             }}
             disabled={!isComplete}
             style={({ pressed }) => [

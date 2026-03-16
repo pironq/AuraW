@@ -102,7 +102,7 @@ export default function CreateWalletScreen() {
       <Animated.View style={[styles.bottomSection, animStyle]}>
         <Pressable
           onPress={() => {
-            // TODO: Navigate to seed phrase generation
+            router.push({ pathname: '/generating', params: { mode: 'create' } });
           }}
           style={({ pressed }) => [
             styles.ctaButton,
