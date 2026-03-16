@@ -4,6 +4,7 @@ import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Keyboard,
   NativeSyntheticEvent,
   Pressable,
@@ -69,7 +70,13 @@ export default function ImportWalletScreen() {
   };
 
   const handlePaste = async () => {
-    const text = await ExpoClipboard.getStringAsync();
+    let text: string;
+    try {
+      text = await ExpoClipboard.getStringAsync();
+    } catch {
+      Alert.alert('Clipboard error', 'Could not read from clipboard. Please check app permissions.');
+      return;
+    }
     if (!text) return;
     if (method === 'phrase') {
       const parsed = text.trim().toLowerCase().split(/\s+/);
