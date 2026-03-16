@@ -1,13 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ExpoClipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
+  NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
+  TextInputKeyPressEventData,
   View,
 } from 'react-native';
 import Animated, {
@@ -18,23 +23,29 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import AuraLogo from '@/components/AuraLogo';
+
 type ImportMethod = 'phrase' | 'privateKey';
+type WordCount = 12 | 24;
 
 export default function ImportWalletScreen() {
   const [method, setMethod] = useState<ImportMethod>('phrase');
-  const [inputValue, setInputValue] = useState('');
+  const [wordCount, setWordCount] = useState<WordCount>(12);
+  const [words, setWords] = useState<string[]>(Array(12).fill(''));
+  const [privateKey, setPrivateKey] = useState('');
+  const inputRefs = useRef<(TextInput | null)[]>([]);
 
   const contentOpacity = useSharedValue(0);
-  const contentTranslateY = useSharedValue(30);
+  const contentTranslateY = useSharedValue(28);
 
   useEffect(() => {
     contentOpacity.value = withDelay(
-      150,
-      withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) })
+      100,
+      withTiming(1, { duration: 450, easing: Easing.out(Easing.cubic) })
     );
     contentTranslateY.value = withDelay(
-      150,
-      withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) })
+      100,
+      withTiming(0, { duration: 450, easing: Easing.out(Easing.cubic) })
     );
   }, []);
 
@@ -43,124 +54,271 @@ export default function ImportWalletScreen() {
     transform: [{ translateY: contentTranslateY.value }],
   }));
 
-  const hasInput = inputValue.trim().length > 0;
+  const isComplete = method === 'phrase'
+    ? words.every(w => w.trim().length > 0)
+    : privateKey.trim().length > 0;
+
+  const hasInput = method === 'phrase'
+    ? words.some(w => w.trim().length > 0)
+    : privateKey.trim().length > 0;
+
+  const switchWordCount = (count: WordCount) => {
+    setWordCount(count);
+    setWords(Array(count).fill(''));
+    inputRefs.current = [];
+  };
+
+  const handlePaste = async () => {
+    const text = await ExpoClipboard.getStringAsync();
+    if (!text) return;
+    if (method === 'phrase') {
+      const parsed = text.trim().toLowerCase().split(/\s+/);
+      if (parsed.length > 12 && wordCount === 12) {
+        switchWordCount(24);
+        const newWords = Array(24).fill('');
+        parsed.slice(0, 24).forEach((w, i) => { newWords[i] = w; });
+        setTimeout(() => {
+          setWords(newWords);
+          Keyboard.dismiss();
+        }, 50);
+        return;
+      }
+      const newWords = Array(wordCount).fill('');
+      parsed.slice(0, wordCount).forEach((w, i) => { newWords[i] = w; });
+      setWords(newWords);
+      Keyboard.dismiss();
+    } else {
+      setPrivateKey(text.trim());
+    }
+  };
+
+  const handleWordChange = (text: string, index: number) => {
+    const parts = text.trim().split(/\s+/);
+    if (parts.length > 1) {
+      // Auto-detect 24 words
+      if (parts.length > 12 && wordCount === 12) {
+        switchWordCount(24);
+        const newWords = Array(24).fill('');
+        parts.slice(0, 24).forEach((word, i) => { newWords[i] = word.toLowerCase(); });
+        setTimeout(() => {
+          setWords(newWords);
+          const nextIdx = Math.min(parts.length, 23);
+          setTimeout(() => inputRefs.current[nextIdx]?.focus(), 50);
+        }, 50);
+        return;
+      }
+      const newWords = [...words];
+      parts.forEach((word, i) => {
+        if (index + i < wordCount) newWords[index + i] = word.toLowerCase();
+      });
+      setWords(newWords);
+      const nextIdx = Math.min(index + parts.length, wordCount - 1);
+      setTimeout(() => inputRefs.current[nextIdx]?.focus(), 50);
+      return;
+    }
+    if (text.endsWith(' ') && text.trim().length > 0) {
+      const newWords = [...words];
+      newWords[index] = text.trim().toLowerCase();
+      setWords(newWords);
+      if (index < wordCount - 1) inputRefs.current[index + 1]?.focus();
+      return;
+    }
+    const newWords = [...words];
+    newWords[index] = text.toLowerCase();
+    setWords(newWords);
+  };
+
+  const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && words[index] === '' && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const filledCount = words.filter(w => w.trim().length > 0).length;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Header — instant */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </Pressable>
-        <Text style={styles.headerTitle}>Import Wallet</Text>
-        <View style={{ width: 40 }} />
       </View>
 
-      {/* All content slides up once */}
-      <Animated.View style={[styles.scrollContent, animStyle]}>
-        {/* Icon */}
-        <View style={styles.iconContainer}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="download" size={48} color="#fff" />
-          </View>
-        </View>
-
-        {/* Title + subtitle */}
-        <Text style={styles.title}>Restore your{'\n'}wallet</Text>
-        <Text style={styles.subtitle}>
-          Import an existing wallet using your recovery phrase or private key.
-        </Text>
-
-        {/* Method tabs — frosted glass */}
-        <View style={styles.tabOuter}>
-          <BlurView intensity={20} tint="dark" style={styles.tabBlur}>
-            <View style={styles.tabContainer}>
-              <Pressable
-                onPress={() => { setMethod('phrase'); setInputValue(''); }}
-                style={[styles.tab, method === 'phrase' && styles.tabActive]}
-              >
-                <Text style={[styles.tabText, method === 'phrase' && styles.tabTextActive]}>
-                  Recovery Phrase
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => { setMethod('privateKey'); setInputValue(''); }}
-                style={[styles.tab, method === 'privateKey' && styles.tabActive]}
-              >
-                <Text style={[styles.tabText, method === 'privateKey' && styles.tabTextActive]}>
-                  Private Key
-                </Text>
-              </Pressable>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+      >
+          <Animated.View style={animStyle}>
+            {/* Hero */}
+            <View style={styles.heroSection}>
+              <AuraLogo size={56} isDark />
+              <Text style={styles.title}>IMPORT WALLET</Text>
+              <Text style={styles.subtitle}>
+                Restore an existing wallet with your{'\n'}recovery phrase or private key.
+              </Text>
             </View>
-          </BlurView>
-        </View>
 
-        {/* Input — frosted glass */}
-        <View style={styles.inputOuter}>
-          <BlurView intensity={15} tint="dark" style={styles.inputBlur}>
-            <View style={styles.inputInner}>
-              <TextInput
-                style={styles.textInput}
-                placeholder={
-                  method === 'phrase'
-                    ? 'Enter your 12 or 24 word recovery phrase...'
-                    : 'Enter your private key (0x...)...'
-                }
-                placeholderTextColor="rgba(255,255,255,0.2)"
-                multiline
-                value={inputValue}
-                onChangeText={setInputValue}
-                autoCapitalize="none"
-                autoCorrect={false}
-                textAlignVertical="top"
-                selectionColor="rgba(255,255,255,0.4)"
-              />
-              {inputValue.length > 0 && (
-                <Pressable
-                  onPress={() => setInputValue('')}
-                  style={styles.clearButton}
-                >
-                  <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.3)" />
-                </Pressable>
-              )}
+            {/* Tabs */}
+            <View style={styles.tabOuter}>
+              <BlurView intensity={20} tint="dark" style={styles.tabBlur}>
+                <View style={styles.tabRow}>
+                  <Pressable
+                    onPress={() => { setMethod('phrase'); setPrivateKey(''); }}
+                    style={[styles.tab, method === 'phrase' && styles.tabActive]}
+                  >
+                    <Ionicons
+                      name="grid-outline"
+                      size={14}
+                      color={method === 'phrase' ? '#fff' : 'rgba(255,255,255,0.3)'}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.tabText, method === 'phrase' && styles.tabTextActive]}>
+                      Seed Phrase
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => { setMethod('privateKey'); setWords(Array(wordCount).fill('')); }}
+                    style={[styles.tab, method === 'privateKey' && styles.tabActive]}
+                  >
+                    <Ionicons
+                      name="key-outline"
+                      size={14}
+                      color={method === 'privateKey' ? '#fff' : 'rgba(255,255,255,0.3)'}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={[styles.tabText, method === 'privateKey' && styles.tabTextActive]}>
+                      Private Key
+                    </Text>
+                  </Pressable>
+                </View>
+              </BlurView>
             </View>
-          </BlurView>
-        </View>
 
-        {/* Paste row */}
-        <Pressable style={styles.pasteRow}>
-          <Ionicons name="clipboard-outline" size={16} color="rgba(255,255,255,0.5)" />
-          <Text style={styles.pasteText}>Paste from clipboard</Text>
-        </Pressable>
-      </Animated.View>
+            {method === 'phrase' ? (
+              <>
+                {/* Counter with inline 12/24 switcher */}
+                <View style={styles.phraseHeader}>
+                  <Pressable onPress={() => switchWordCount(wordCount === 12 ? 24 : 12)} style={styles.wordToggle}>
+                    <Text style={styles.wordToggleText}>{wordCount} words</Text>
+                    <Ionicons name="swap-horizontal" size={13} color="rgba(255,255,255,0.35)" style={{ marginLeft: 5 }} />
+                  </Pressable>
+                  <Text style={styles.countText}>{filledCount} of {wordCount}</Text>
+                </View>
 
-      {/* CTA button */}
-      <Animated.View style={[styles.bottomSection, animStyle]}>
-        <Pressable
-          onPress={() => {
-            // TODO: Validate and import wallet
-          }}
-          disabled={!hasInput}
-          style={({ pressed }) => [
-            styles.ctaButton,
-            !hasInput && styles.ctaButtonDisabled,
-            pressed && hasInput && { opacity: 0.8, transform: [{ scale: 0.98 }] },
-          ]}
-        >
-          <Text style={[styles.ctaText, !hasInput && styles.ctaTextDisabled]}>
-            Import Wallet
-          </Text>
-          <Ionicons
-            name="arrow-forward"
-            size={18}
-            color={hasInput ? '#000' : 'rgba(255,255,255,0.25)'}
-            style={{ marginLeft: 8 }}
-          />
-        </Pressable>
-      </Animated.View>
-    </View>
+                {/* 12 word boxes — 3 columns */}
+                <View style={styles.wordGrid}>
+                  {words.map((word, i) => (
+                    <View key={i} style={[styles.wordBoxOuter, word.length > 0 && styles.wordBoxFilled]}>
+                      <Text style={styles.wordNumber}>{i + 1}</Text>
+                      <TextInput
+                        ref={ref => { inputRefs.current[i] = ref; }}
+                        style={styles.wordInput}
+                        value={word}
+                        onChangeText={text => handleWordChange(text, i)}
+                        onKeyPress={e => handleKeyPress(e, i)}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="off"
+                        spellCheck={false}
+                        selectionColor="rgba(255,255,255,0.4)"
+                        returnKeyType={i < wordCount - 1 ? 'next' : 'done'}
+                        onSubmitEditing={() => {
+                          if (i < wordCount - 1) inputRefs.current[i + 1]?.focus();
+                          else Keyboard.dismiss();
+                        }}
+                        blurOnSubmit={false}
+                      />
+                    </View>
+                  ))}
+                </View>
+
+                {/* Paste + Clear */}
+                <View style={styles.actionRow}>
+                  <Pressable onPress={handlePaste} style={styles.actionButton}>
+                    <Ionicons name="clipboard-outline" size={15} color="rgba(255,255,255,0.55)" />
+                    <Text style={styles.actionText}>Paste</Text>
+                  </Pressable>
+                  {hasInput && (
+                    <Pressable
+                      onPress={() => {
+                        setWords(Array(wordCount).fill(''));
+                        inputRefs.current[0]?.focus();
+                      }}
+                      style={styles.actionButton}
+                    >
+                      <Ionicons name="trash-outline" size={15} color="rgba(255,255,255,0.35)" />
+                      <Text style={[styles.actionText, { color: 'rgba(255,255,255,0.35)' }]}>Clear all</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.inputOuter}>
+                  <BlurView intensity={18} tint="dark" style={styles.inputBlur}>
+                    <View style={styles.inputInner}>
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Enter your private key (0x…)"
+                        placeholderTextColor="rgba(255,255,255,0.2)"
+                        multiline
+                        value={privateKey}
+                        onChangeText={setPrivateKey}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        textAlignVertical="top"
+                        selectionColor="rgba(255,255,255,0.4)"
+                      />
+                    </View>
+                  </BlurView>
+                </View>
+                <View style={styles.actionRow}>
+                  <Pressable onPress={handlePaste} style={styles.actionButton}>
+                    <Ionicons name="clipboard-outline" size={15} color="rgba(255,255,255,0.55)" />
+                    <Text style={styles.actionText}>Paste</Text>
+                  </Pressable>
+                  {hasInput && (
+                    <Pressable onPress={() => setPrivateKey('')} style={styles.actionButton}>
+                      <Ionicons name="trash-outline" size={15} color="rgba(255,255,255,0.35)" />
+                      <Text style={[styles.actionText, { color: 'rgba(255,255,255,0.35)' }]}>Clear</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </>
+            )}
+          </Animated.View>
+        </ScrollView>
+
+        {/* Bottom CTA */}
+        <Animated.View style={[styles.bottomSection, animStyle]}>
+          <Pressable
+            onPress={() => {
+              // TODO: Validate and import wallet
+            }}
+            disabled={!isComplete}
+            style={({ pressed }) => [
+              styles.ctaButton,
+              !isComplete && styles.ctaButtonDisabled,
+              pressed && isComplete && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+            ]}
+          >
+            <Text style={[styles.ctaText, !isComplete && styles.ctaTextDisabled]}>
+              Restore wallet
+            </Text>
+            <Ionicons
+              name="arrow-forward"
+              size={17}
+              color={isComplete ? '#000' : 'rgba(255,255,255,0.25)'}
+              style={{ marginLeft: 8 }}
+            />
+          </Pressable>
+        </Animated.View>
+      </View>
   );
 }
 
@@ -170,12 +328,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingTop: 56,
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 4,
   },
   backButton: {
     width: 40,
@@ -185,66 +340,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 0.3,
+  scroll: {
+    flex: 1,
   },
   scrollContent: {
-    flex: 1,
     paddingHorizontal: 24,
+    paddingBottom: 20,
   },
-  iconContainer: {
+  heroSection: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 6,
     marginBottom: 28,
-  },
-  iconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   title: {
     fontSize: 32,
     fontWeight: '800',
     color: '#fff',
-    lineHeight: 38,
-    letterSpacing: -0.8,
-    marginBottom: 12,
+    letterSpacing: 5,
+    marginTop: 16,
+    marginBottom: 14,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.5)',
-    lineHeight: 22,
-    marginBottom: 24,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
+    lineHeight: 21,
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
   tabOuter: {
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.07)',
     marginBottom: 20,
   },
   tabBlur: {
     borderRadius: 14,
     overflow: 'hidden',
   },
-  tabContainer: {
+  tabRow: {
     flexDirection: 'row',
     padding: 4,
     backgroundColor: 'rgba(255,255,255,0.03)',
   },
   tab: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 11,
   },
   tabActive: {
@@ -252,21 +397,99 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: 'rgba(255,255,255,0.35)',
   },
   tabTextActive: {
     color: '#fff',
   },
+  countText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.3)',
+    letterSpacing: 0.3,
+  },
+  phraseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  wordToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  wordToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 0.3,
+  },
+  wordGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  wordBoxOuter: {
+    width: '31%' as any,
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingHorizontal: 8,
+  },
+  wordBoxFilled: {
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  wordNumber: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.2)',
+    width: 18,
+    letterSpacing: 0.5,
+  },
+  wordInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+    padding: 0,
+    height: 40,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  actionText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
   inputOuter: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.07)',
     marginBottom: 12,
   },
   inputBlur: {
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   inputInner: {
@@ -274,34 +497,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   textInput: {
-    minHeight: 120,
+    minHeight: 130,
     padding: 16,
     fontSize: 15,
     color: '#fff',
     lineHeight: 22,
   },
-  clearButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    padding: 4,
-  },
-  pasteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  pasteText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '500',
-    marginLeft: 6,
-  },
   bottomSection: {
     paddingHorizontal: 24,
     paddingBottom: 44,
-    paddingTop: 16,
+    paddingTop: 12,
   },
   ctaButton: {
     height: 56,
@@ -320,7 +525,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#000',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   ctaTextDisabled: {
     color: 'rgba(255,255,255,0.25)',

@@ -165,21 +165,23 @@ const styles = StyleSheet.create({
   // ── Hero ──
   heroSection: {
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 36,
+    marginTop: 6,
+    marginBottom: 28,
   },
   title: {
     fontSize: 32,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 5,
-    marginTop: 20,
-    marginBottom: 16,
+    marginTop: 16,
+    marginBottom: 14,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.55)',
+    lineHeight: 21,
+    textAlign: 'center',
     letterSpacing: 0.2,
   },
 
