@@ -21,9 +21,9 @@ import AuraLogo from '@/components/AuraLogo';
 
 export default function WalletReadyScreen() {
   const { from } = useLocalSearchParams<{ from: string }>();
-  const initialY = from === 'import' ? 30 : from === 'create' ? -60 : 0;
+  const initialY = from === 'import' ? 60 : from === 'create' ? -60 : 0;
 
-  const logoScale = useSharedValue(0.3);
+  const logoScale = useSharedValue(0.92);
   const logoOpacity = useSharedValue(0);
   const logoTranslateY = useSharedValue(initialY);
   const checkScale = useSharedValue(0);
@@ -34,10 +34,10 @@ export default function WalletReadyScreen() {
   const buttonTranslateY = useSharedValue(30);
 
   useEffect(() => {
-    // Logo slide + pop in
-    logoOpacity.value = withTiming(1, { duration: 400, easing: Easing.out(Easing.cubic) });
-    logoScale.value = withSpring(1, { damping: 12, stiffness: 100 });
-    logoTranslateY.value = withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) });
+    // Logo — gentle fade + float into position
+    logoOpacity.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.quad) });
+    logoScale.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.quad) });
+    logoTranslateY.value = withTiming(0, { duration: 900, easing: Easing.out(Easing.quad) });
 
     // Checkmark — single clean scale-up
     checkOpacity.value = withDelay(500, withTiming(1, { duration: 300 }));
@@ -93,7 +93,7 @@ export default function WalletReadyScreen() {
       <View style={styles.center}>
         {/* Logo */}
         <Animated.View style={logoStyle}>
-          <AuraLogo size={72} isDark />
+          <AuraLogo size={96} isDark />
         </Animated.View>
 
         {/* Success checkmark */}
