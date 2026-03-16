@@ -113,7 +113,7 @@ export default function WalletReadyScreen() {
       {/* CTA */}
       <Animated.View style={[styles.bottomSection, buttonStyle]}>
         <Pressable
-          onPress={() => router.replace('/')}
+          onPress={() => router.replace('/(tabs)/home')}
           style={({ pressed }) => [
             styles.ctaButton,
             pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },

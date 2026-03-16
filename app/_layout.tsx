@@ -43,6 +43,7 @@ export default function RootLayout() {
         <Stack.Screen name="generating" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="seed-phrase" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="verify-phrase" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="wallet-ready" options={{ animation: 'fade', gestureEnabled: false }} />
       </Stack>
     </ThemeProvider>
