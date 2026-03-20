@@ -104,6 +104,8 @@ Most wallets force you to choose between **security** and **usability**. AuraW g
 
 **Key principle:** Private keys exist in memory **only** during transaction signing and are cleared immediately after. All signing happens on-device. Nothing sensitive ever touches a server.
 
+Note: `AsyncStorage` is used only for non-sensitive preferences and UI state. Never store private keys, recovery phrases, PINs, or other secrets in `AsyncStorage`; use `expo-secure-store` for sensitive values.
+
 ## Getting Started
 
 ### Prerequisites

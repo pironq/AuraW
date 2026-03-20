@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Pressable,
     StatusBar,
@@ -18,16 +18,31 @@ const MOCK_PRIVATE_KEY = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234
 export default function ViewPrivateKeyScreen() {
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(MOCK_PRIVATE_KEY);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current);
+    }
+    copyTimeoutRef.current = setTimeout(async () => {
+      setCopied(false);
+      await Clipboard.setStringAsync('');
+    }, 2000);
   };
 
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const formatPrivateKey = (key: string) => {
-    // Split into groups of 8 characters for readability
+    // Split into groups of 16 characters for readability
     const chunks = [];
     for (let i = 0; i < key.length; i += 16) {
       chunks.push(key.slice(i, i + 16));

@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import React from 'react';
 import {
+    Alert,
     Pressable,
     ScrollView,
     StatusBar,
@@ -16,34 +17,48 @@ type SupportOption = {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
   desc: string;
-  action: () => void;
+  action: () => Promise<void>;
 };
 
 export default function SupportScreen() {
+  const openSupportLink = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert('Cannot open link', `This device cannot open: ${url}`);
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert('Failed to open link', `URL: ${url}`);
+      console.warn('Support link open failed:', error);
+    }
+  };
+
   const supportOptions: SupportOption[] = [
     {
       icon: 'book-outline',
       title: 'Help Center',
       desc: 'Browse FAQs and guides',
-      action: () => Linking.openURL('https://help.aurawallet.app'),
+      action: async () => openSupportLink('https://help.aurawallet.app'),
     },
     {
       icon: 'chatbubble-outline',
       title: 'Contact Support',
       desc: 'Get help from our team',
-      action: () => Linking.openURL('mailto:support@aurawallet.app'),
+      action: async () => openSupportLink('mailto:support@aurawallet.app'),
     },
     {
       icon: 'logo-twitter',
       title: 'Twitter',
       desc: 'Follow us for updates',
-      action: () => Linking.openURL('https://twitter.com/aurawallet'),
+      action: async () => openSupportLink('https://twitter.com/aurawallet'),
     },
     {
       icon: 'logo-discord',
       title: 'Discord Community',
       desc: 'Join the community',
-      action: () => Linking.openURL('https://discord.gg/aurawallet'),
+      action: async () => openSupportLink('https://discord.gg/aurawallet'),
     },
   ];
 

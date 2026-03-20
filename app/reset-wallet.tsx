@@ -5,9 +5,16 @@ import { Alert, Pressable, StatusBar, StyleSheet, Text, View } from 'react-nativ
 
 export default function ResetWalletScreen() {
   const handleReset = () => {
-    Alert.alert('Reset Wallet', 'This action is permanent in production. Demo route is connected.', [
+    Alert.alert('Reset Wallet', 'This action will permanently delete your wallet and cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Reset', style: 'destructive' },
+      {
+        text: 'Reset',
+        style: 'destructive',
+        onPress: () => {
+          router.dismissAll();
+          router.replace('/');
+        },
+      },
     ]);
   };
 

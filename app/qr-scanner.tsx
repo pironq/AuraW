@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Pressable,
     StatusBar,
@@ -16,15 +16,21 @@ export default function QRScannerScreen() {
   const params = useLocalSearchParams();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [validAddressScanned, setValidAddressScanned] = useState(false);
+  const rescanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
     if (scanned) return;
     setScanned(true);
-
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (rescanTimeoutRef.current) {
+      clearTimeout(rescanTimeoutRef.current);
+      rescanTimeoutRef.current = null;
+    }
 
     // Check if it's an Ethereum address
     if (/^0x[a-fA-F0-9]{40}$/.test(data)) {
+      setValidAddressScanned(true);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Navigate back to send-address with the scanned address
       if (params.returnTo === '/send-address') {
         router.replace({
@@ -39,9 +45,21 @@ export default function QRScannerScreen() {
       }
     } else {
       // Not a valid address, allow rescan
-      setTimeout(() => setScanned(false), 2000);
+      setValidAddressScanned(false);
+      rescanTimeoutRef.current = setTimeout(() => {
+        setScanned(false);
+        setValidAddressScanned(false);
+      }, 2000);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (rescanTimeoutRef.current) {
+        clearTimeout(rescanTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!permission) {
     return (
@@ -113,7 +131,7 @@ export default function QRScannerScreen() {
           <Text style={styles.instruction}>
             Position the QR code within the frame to scan
           </Text>
-          {scanned && (
+          {validAddressScanned && (
             <Animated.View entering={FadeIn.duration(200)} style={styles.scannedBadge}>
               <Ionicons name="checkmark-circle" size={18} color="#4ade80" />
               <Text style={styles.scannedText}>Address detected</Text>

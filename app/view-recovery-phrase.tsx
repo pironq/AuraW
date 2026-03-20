@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
+import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Pressable,
     StatusBar,
@@ -12,22 +13,65 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
 
-// Mock recovery phrase
-const MOCK_PHRASE = [
-  'abandon', 'ability', 'able', 'about',
-  'above', 'absent', 'absorb', 'abstract',
-  'absurd', 'abuse', 'access', 'accident',
-];
+const RECOVERY_PHRASE_KEY = 'auraw:recovery-phrase';
 
 export default function ViewRecoveryPhraseScreen() {
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [phraseWords, setPhraseWords] = useState<string[]>([]);
+  const [loadingPhrase, setLoadingPhrase] = useState(true);
+  const [phraseError, setPhraseError] = useState<string | null>(null);
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearClipboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    const loadPhrase = async () => {
+      try {
+        const stored = await SecureStore.getItemAsync(RECOVERY_PHRASE_KEY);
+        const words = stored?.trim().split(/\s+/).filter(Boolean) ?? [];
+        if (words.length >= 12) {
+          setPhraseWords(words);
+        } else {
+          setPhraseError('Recovery phrase not available on this device.');
+        }
+      } catch {
+        setPhraseError('Unable to load recovery phrase.');
+      } finally {
+        if (mountedRef.current) {
+          setLoadingPhrase(false);
+        }
+      }
+    };
+
+    loadPhrase();
+
+    return () => {
+      mountedRef.current = false;
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+      if (clearClipboardTimeoutRef.current) clearTimeout(clearClipboardTimeoutRef.current);
+    };
+  }, []);
 
   const handleCopy = async () => {
-    await Clipboard.setStringAsync(MOCK_PHRASE.join(' '));
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await Clipboard.setStringAsync(phraseWords.join(' '));
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (!mountedRef.current) return;
+      setCopied(true);
+
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+      copiedTimeoutRef.current = setTimeout(() => {
+        if (mountedRef.current) setCopied(false);
+      }, 2000);
+
+      if (clearClipboardTimeoutRef.current) clearTimeout(clearClipboardTimeoutRef.current);
+      clearClipboardTimeoutRef.current = setTimeout(async () => {
+        await Clipboard.setStringAsync('');
+      }, 5000);
+    } catch (error) {
+      console.warn('Failed to copy recovery phrase:', error);
+    }
   };
 
   return (
@@ -57,7 +101,15 @@ export default function ViewRecoveryPhraseScreen() {
 
         {/* Phrase Grid */}
         <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.phraseCard}>
-          {!revealed ? (
+          {loadingPhrase ? (
+            <View style={styles.revealOverlay}>
+              <Text style={styles.revealText}>Loading recovery phrase...</Text>
+            </View>
+          ) : phraseError ? (
+            <View style={styles.revealOverlay}>
+              <Text style={styles.revealText}>{phraseError}</Text>
+            </View>
+          ) : !revealed ? (
             <Pressable style={styles.revealOverlay} onPress={() => setRevealed(true)}>
               <View style={styles.revealIcon}>
                 <Ionicons name="eye-off-outline" size={32} color="rgba(255,255,255,0.5)" />
@@ -67,7 +119,7 @@ export default function ViewRecoveryPhraseScreen() {
             </Pressable>
           ) : (
             <View style={styles.phraseGrid}>
-              {MOCK_PHRASE.map((word, index) => (
+              {phraseWords.map((word, index) => (
                 <View key={index} style={styles.wordBox}>
                   <Text style={styles.wordNumber}>{index + 1}</Text>
                   <Text style={styles.wordText}>{word}</Text>
@@ -78,7 +130,7 @@ export default function ViewRecoveryPhraseScreen() {
         </Animated.View>
 
         {/* Actions */}
-        {revealed && (
+        {revealed && phraseWords.length > 0 && (
           <Animated.View entering={FadeIn.duration(300)} style={styles.actions}>
             <Pressable style={styles.actionBtn} onPress={handleCopy}>
               {copied ? (

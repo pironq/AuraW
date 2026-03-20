@@ -9,7 +9,7 @@ const TOKEN_ADDRESSES: Record<string, string> = {
   LINK: '0x514910771AF9Ca656af840dff83E8264EcF986CA',
   ARB: '0xB50721BCf8d664c30412Cfbc6cf7a15145234ad1',
   WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-  DAI: '0x6B175474E89094C44Da98b954EescdeCB5DB5d36F',
+  DAI: '0x6B175474E89094C44Da98b954EedeCC490De4437',
   WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
   UNI: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
   AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
@@ -67,7 +67,8 @@ export default function TokenIcon({
   chain = 'ethereum'
 }: TokenIconProps) {
   const imageUrl = getTokenImageUrl(symbol);
-  const chainLogoUrl = CHAIN_LOGOS[chain.toLowerCase()] || CHAIN_LOGOS.ethereum;
+  const normalizedChain = chain.toLowerCase();
+  const chainLogoUrl = CHAIN_LOGOS[normalizedChain] || CHAIN_LOGOS.ethereum;
   const badgeSize = size * 0.4;
 
   return (
@@ -77,7 +78,7 @@ export default function TokenIcon({
         style={[styles.tokenImage, { width: size, height: size, borderRadius: size / 2 }]}
         resizeMode="cover"
       />
-      {showChainBadge && chain !== 'ethereum' && (
+      {showChainBadge && normalizedChain !== 'ethereum' && (
         <View style={[styles.chainBadge, {
           width: badgeSize,
           height: badgeSize,

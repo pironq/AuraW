@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     Pressable,
     ScrollView,
@@ -32,16 +32,20 @@ export default function ReceiveTokenScreen() {
   }>();
 
   const [copied, setCopied] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mock wallet address
-  const walletAddress = '0x1a2B3c4D5e6F7g8H9i0J1k2L3m4N5o6P7q8R9cDe';
+  const walletAddress = '0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b';
   const truncatedAddress = `${walletAddress.slice(0, 10)}...${walletAddress.slice(-8)}`;
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(walletAddress);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current);
+    }
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   const handleShare = async () => {
@@ -78,7 +82,7 @@ export default function ReceiveTokenScreen() {
               chain={params.network || 'ethereum'}
             />
             <View style={styles.tokenInfo}>
-              <Text style={styles.tokenName}>{params.name}</Text>
+              <Text style={styles.tokenName}>{params.name || params.symbol || 'Token'}</Text>
               <Text style={styles.networkLabel}>
                 {(params.network || 'ethereum').charAt(0).toUpperCase() +
                   (params.network || 'ethereum').slice(1)} Network

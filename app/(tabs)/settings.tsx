@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    Alert,
     Pressable,
     ScrollView,
     StatusBar,
@@ -23,6 +25,7 @@ type SettingItem = {
   value?: string | boolean;
   danger?: boolean;
   onPress?: () => void;
+  onToggle?: (value: boolean) => void;
 };
 
 type SettingSection = {
@@ -33,6 +36,46 @@ type SettingSection = {
 export default function SettingsScreen() {
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const SETTINGS_BIOMETRIC_KEY = 'auraw:settings:biometric-enabled';
+  const SETTINGS_NOTIFICATIONS_KEY = 'auraw:settings:notifications-enabled';
+
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const [biometricStored, notificationsStored] = await Promise.all([
+          AsyncStorage.getItem(SETTINGS_BIOMETRIC_KEY),
+          AsyncStorage.getItem(SETTINGS_NOTIFICATIONS_KEY),
+        ]);
+        if (biometricStored !== null) {
+          setBiometricEnabled(biometricStored === 'true');
+        }
+        if (notificationsStored !== null) {
+          setNotificationsEnabled(notificationsStored === 'true');
+        }
+      } catch (error) {
+        console.warn('Failed to load settings preferences:', error);
+      }
+    };
+    loadPreferences();
+  }, []);
+
+  const handleBiometricToggle = async (value: boolean) => {
+    setBiometricEnabled(value);
+    try {
+      await AsyncStorage.setItem(SETTINGS_BIOMETRIC_KEY, String(value));
+    } catch (error) {
+      console.warn('Failed to persist biometric setting:', error);
+    }
+  };
+
+  const handleNotificationsToggle = async (value: boolean) => {
+    setNotificationsEnabled(value);
+    try {
+      await AsyncStorage.setItem(SETTINGS_NOTIFICATIONS_KEY, String(value));
+    } catch (error) {
+      console.warn('Failed to persist notifications setting:', error);
+    }
+  };
 
   const handleSecurityOption = (option: string) => {
     router.push({
@@ -68,7 +111,7 @@ export default function SettingsScreen() {
           subtitle: 'Use Face ID or fingerprint',
           type: 'toggle',
           value: biometricEnabled,
-          onPress: () => setBiometricEnabled(!biometricEnabled),
+          onToggle: handleBiometricToggle,
         },
         {
           id: 'change-pin',
@@ -127,7 +170,7 @@ export default function SettingsScreen() {
           subtitle: 'Transaction alerts and updates',
           type: 'toggle',
           value: notificationsEnabled,
-          onPress: () => setNotificationsEnabled(!notificationsEnabled),
+          onToggle: handleNotificationsToggle,
         },
       ],
     },
@@ -174,7 +217,19 @@ export default function SettingsScreen() {
           subtitle: 'Remove all data from this device',
           type: 'link',
           danger: true,
-          onPress: () => router.push('/reset-wallet'),
+          onPress: () =>
+            Alert.alert(
+              'Reset Wallet',
+              'This action will permanently delete your wallet and cannot be undone.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Continue',
+                  style: 'destructive',
+                  onPress: () => router.push('/reset-wallet'),
+                },
+              ]
+            ),
         },
       ],
     },
@@ -241,7 +296,7 @@ export default function SettingsScreen() {
                   {item.type === 'toggle' && (
                     <Switch
                       value={item.value as boolean}
-                      onValueChange={item.onPress}
+                      onValueChange={item.onToggle ?? (() => undefined)}
                       trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(74,222,128,0.3)' }}
                       thumbColor={item.value ? '#4ade80' : 'rgba(255,255,255,0.5)'}
                     />

@@ -26,8 +26,10 @@ export default function SendAmountScreen() {
   const [isFiatMode, setIsFiatMode] = useState(false);
 
   // Parse current token price from value/balance
-  const tokenPrice = parseFloat(params.value?.replace(/[$,]/g, '') || '0') /
-    parseFloat(params.balance || '1');
+  const parsedValue = Number((params.value || '').replace(/[$,]/g, ''));
+  const balanceNum = Number(params.balance || '');
+  const safeBalance = Number.isFinite(balanceNum) && balanceNum > 0 ? balanceNum : 1;
+  const tokenPrice = (Number.isFinite(parsedValue) ? parsedValue : 0) / safeBalance;
 
   // Calculate equivalent value
   const numericAmount = parseFloat(amount) || 0;
@@ -35,11 +37,11 @@ export default function SendAmountScreen() {
     ? numericAmount
     : numericAmount * tokenPrice;
   const tokenAmount = isFiatMode
-    ? numericAmount / tokenPrice
+    ? tokenPrice > 0 ? numericAmount / tokenPrice : 0
     : numericAmount;
 
   const maxBalance = parseFloat(params.balance || '0');
-  const isValidAmount = tokenAmount > 0 && tokenAmount <= maxBalance;
+  const isValidAmount = Number.isFinite(tokenAmount) && tokenAmount > 0 && tokenAmount <= maxBalance;
 
   const handleMaxPress = () => {
     setAmount(isFiatMode
@@ -113,7 +115,7 @@ export default function SendAmountScreen() {
           style={styles.equivalentRow}
           onPress={() => {
             const newAmount = isFiatMode
-              ? (numericAmount / tokenPrice).toString()
+              ? (tokenPrice > 0 ? numericAmount / tokenPrice : 0).toString()
               : (numericAmount * tokenPrice).toFixed(2);
             setAmount(newAmount === 'NaN' || newAmount === 'Infinity' ? '' : newAmount);
             setIsFiatMode(!isFiatMode);

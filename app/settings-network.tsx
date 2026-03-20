@@ -1,12 +1,40 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 const NETWORKS = ['Ethereum', 'Arbitrum', 'Base', 'BNB Chain'];
 
 export default function SettingsNetworkScreen() {
   const [selected, setSelected] = useState('Ethereum');
+  const [loading, setLoading] = useState(true);
+  const STORAGE_KEY = 'defaultNetwork';
+
+  useEffect(() => {
+    const loadNetwork = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          setSelected(stored);
+        }
+      } catch (error) {
+        console.warn('Failed to load network setting:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadNetwork();
+  }, []);
+
+  const handleSelectNetwork = async (network: string) => {
+    setSelected(network);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, network);
+    } catch (error) {
+      console.warn('Failed to save network setting:', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -19,8 +47,11 @@ export default function SettingsNetworkScreen() {
         <View style={styles.placeholder} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <Text style={styles.rowText}>Loading...</Text>
+        ) : null}
         {NETWORKS.map((network) => (
-          <Pressable key={network} style={styles.row} onPress={() => setSelected(network)}>
+          <Pressable key={network} style={styles.row} onPress={() => handleSelectNetwork(network)}>
             <Text style={styles.rowText}>{network}</Text>
             {selected === network && <Ionicons name="checkmark" size={20} color="#4ade80" />}
           </Pressable>

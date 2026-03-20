@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Modal,
@@ -27,6 +27,8 @@ export default function SendConfirmScreen() {
 
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
+  const isMountedRef = useRef(true);
+  const sendTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mock network fee
   const networkFee = '0.0012';
@@ -42,12 +44,22 @@ export default function SendConfirmScreen() {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     // Simulate transaction
-    setTimeout(async () => {
+    sendTimeoutRef.current = setTimeout(async () => {
+      if (!isMountedRef.current) return;
       setSending(false);
       setSuccess(true);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }, 2000);
   };
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (sendTimeoutRef.current) {
+        clearTimeout(sendTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleDone = () => {
     router.dismissAll();
@@ -124,8 +136,9 @@ export default function SendConfirmScreen() {
             <Text style={styles.detailLabelBold}>Total</Text>
             <View style={styles.detailValueCol}>
               <Text style={styles.detailValueBold}>
-                {(parseFloat(params.amount || '0') + parseFloat(networkFee)).toFixed(6)}{' '}
-                {params.symbol === 'ETH' ? 'ETH' : `${params.symbol} + ${networkFee} ETH`}
+                {params.symbol === 'ETH'
+                  ? `${(parseFloat(params.amount || '0') + parseFloat(networkFee)).toFixed(6)} ETH`
+                  : `${parseFloat(params.amount || '0').toFixed(6)} ${params.symbol} + ${networkFee} ETH`}
               </Text>
               <Text style={styles.detailSubValue}>
                 ${(parseFloat(params.fiatValue || '0') + parseFloat(networkFeeFiat)).toFixed(2)}

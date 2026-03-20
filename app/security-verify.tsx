@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     Pressable,
     StatusBar,
@@ -17,14 +20,52 @@ export default function SecurityVerifyScreen() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [biometricSupported, setBiometricSupported] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
   const shakeX = useSharedValue(0);
+  const biometricTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Mock PIN for demo
-  const CORRECT_PIN = '123456';
+  const PIN_HASH_KEY = 'auraw:security:pin-hash';
+  const FAILED_ATTEMPTS_KEY = 'auraw:security:failed-attempts';
+  const LOCKOUT_UNTIL_KEY = 'auraw:security:lockout-until';
+
+  const getLockoutMessage = (until: number) => {
+    const remainingMs = until - Date.now();
+    const remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
+    return `Too many attempts. Try again in ${remainingSec}s.`;
+  };
+
+  const hashPin = async (value: string) => Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    value
+  );
 
   useEffect(() => {
     checkBiometric();
+    const loadSecurityState = async () => {
+      try {
+        const [storedAttempts, storedLockoutUntil] = await Promise.all([
+          AsyncStorage.getItem(FAILED_ATTEMPTS_KEY),
+          AsyncStorage.getItem(LOCKOUT_UNTIL_KEY),
+        ]);
+        setFailedAttempts(Number(storedAttempts || '0') || 0);
+        setLockoutUntil(storedLockoutUntil ? Number(storedLockoutUntil) : null);
+      } catch (stateError) {
+        console.warn('Failed to load security lockout state:', stateError);
+      }
+    };
+    loadSecurityState();
+
+    return () => {
+      if (biometricTimeoutRef.current) {
+        clearTimeout(biometricTimeoutRef.current);
+      }
+      if (clearPinTimeoutRef.current) {
+        clearTimeout(clearPinTimeoutRef.current);
+      }
+    };
   }, []);
 
   const checkBiometric = async () => {
@@ -34,7 +75,7 @@ export default function SecurityVerifyScreen() {
 
     if (compatible && enrolled) {
       // Auto-prompt biometric on load
-      setTimeout(() => handleBiometricAuth(), 500);
+      biometricTimeoutRef.current = setTimeout(() => handleBiometricAuth(), 500);
     }
   };
 
@@ -50,7 +91,12 @@ export default function SecurityVerifyScreen() {
     }
   };
 
-  const handlePinPress = (digit: string) => {
+  const handlePinPress = async (digit: string) => {
+    if (lockoutUntil && lockoutUntil > Date.now()) {
+      setError(getLockoutMessage(lockoutUntil));
+      return;
+    }
+
     if (pin.length < 6) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const newPin = pin + digit;
@@ -58,21 +104,57 @@ export default function SecurityVerifyScreen() {
       setError('');
 
       if (newPin.length === 6) {
-        // Verify PIN
-        if (newPin === CORRECT_PIN) {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          navigateToAction();
-        } else {
+        try {
+          const storedPinHash = await SecureStore.getItemAsync(PIN_HASH_KEY);
+          if (!storedPinHash) {
+            setError('PIN is not configured. Please set up your PIN first.');
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            clearPinTimeoutRef.current = setTimeout(() => setPin(''), 500);
+            return;
+          }
+
+          const enteredPinHash = await hashPin(newPin);
+          if (enteredPinHash === storedPinHash) {
+            await Promise.all([
+              AsyncStorage.setItem(FAILED_ATTEMPTS_KEY, '0'),
+              AsyncStorage.removeItem(LOCKOUT_UNTIL_KEY),
+            ]);
+            setFailedAttempts(0);
+            setLockoutUntil(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            navigateToAction();
+          } else {
+            const nextFailedAttempts = failedAttempts + 1;
+            let nextLockoutUntil: number | null = null;
+            if (nextFailedAttempts >= 5) {
+              const backoffSeconds = Math.min(300, 30 * Math.pow(2, nextFailedAttempts - 5));
+              nextLockoutUntil = Date.now() + backoffSeconds * 1000;
+            }
+
+            await AsyncStorage.setItem(FAILED_ATTEMPTS_KEY, String(nextFailedAttempts));
+            if (nextLockoutUntil) {
+              await AsyncStorage.setItem(LOCKOUT_UNTIL_KEY, String(nextLockoutUntil));
+            } else {
+              await AsyncStorage.removeItem(LOCKOUT_UNTIL_KEY);
+            }
+
+            setFailedAttempts(nextFailedAttempts);
+            setLockoutUntil(nextLockoutUntil);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            setError(nextLockoutUntil ? getLockoutMessage(nextLockoutUntil) : 'Incorrect PIN');
+            shakeX.value = withSequence(
+              withTiming(-10, { duration: 50 }),
+              withTiming(10, { duration: 50 }),
+              withTiming(-10, { duration: 50 }),
+              withTiming(10, { duration: 50 }),
+              withTiming(0, { duration: 50 })
+            );
+            clearPinTimeoutRef.current = setTimeout(() => setPin(''), 500);
+          }
+        } catch (verifyError) {
+          console.warn('PIN verification failed:', verifyError);
+          setError('Unable to verify PIN right now. Please try again.');
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          setError('Incorrect PIN');
-          shakeX.value = withSequence(
-            withTiming(-10, { duration: 50 }),
-            withTiming(10, { duration: 50 }),
-            withTiming(-10, { duration: 50 }),
-            withTiming(10, { duration: 50 }),
-            withTiming(0, { duration: 50 })
-          );
-          setTimeout(() => setPin(''), 500);
         }
       }
     }
@@ -186,6 +268,8 @@ export default function SecurityVerifyScreen() {
                       key={keyIndex}
                       style={styles.key}
                       onPress={handleBiometricAuth}
+                      accessibilityLabel="Use biometrics"
+                      accessibilityHint="Authenticate using fingerprint or face"
                     >
                       <Ionicons name="finger-print" size={28} color="#fff" />
                     </Pressable>
@@ -198,6 +282,8 @@ export default function SecurityVerifyScreen() {
                       style={styles.key}
                       onPress={handleDelete}
                       onLongPress={() => setPin('')}
+                      accessibilityLabel="Delete"
+                      accessibilityHint="Delete last digit; long press to clear"
                     >
                       <Ionicons name="backspace-outline" size={26} color="#fff" />
                     </Pressable>
@@ -208,6 +294,8 @@ export default function SecurityVerifyScreen() {
                     key={keyIndex}
                     style={styles.key}
                     onPress={() => handlePinPress(key)}
+                    accessibilityLabel={`Digit ${key}`}
+                    accessibilityHint={`Enter digit ${key}`}
                   >
                     <Text style={styles.keyText}>{key}</Text>
                   </Pressable>

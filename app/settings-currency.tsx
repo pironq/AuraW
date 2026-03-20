@@ -1,12 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'AED', 'JPY'];
 
 export default function SettingsCurrencyScreen() {
   const [selected, setSelected] = useState('USD');
+  const STORAGE_KEY = 'currency';
+
+  useEffect(() => {
+    const loadCurrency = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          setSelected(stored);
+        }
+      } catch (error) {
+        console.warn('Failed to load currency setting:', error);
+      }
+    };
+    loadCurrency();
+  }, []);
+
+  const handleSelectCurrency = async (currency: string) => {
+    setSelected(currency);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, currency);
+    } catch (error) {
+      console.warn('Failed to save currency setting:', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -20,7 +45,7 @@ export default function SettingsCurrencyScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {CURRENCIES.map((currency) => (
-          <Pressable key={currency} style={styles.row} onPress={() => setSelected(currency)}>
+          <Pressable key={currency} style={styles.row} onPress={() => handleSelectCurrency(currency)}>
             <Text style={styles.rowText}>{currency}</Text>
             {selected === currency && <Ionicons name="checkmark" size={20} color="#4ade80" />}
           </Pressable>

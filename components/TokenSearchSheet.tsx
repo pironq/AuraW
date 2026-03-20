@@ -125,8 +125,15 @@ export default function TokenSearchSheet({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Select Token</Text>
-            <Pressable style={styles.closeBtn} onPress={onClose}>
-              <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" />
+            <Pressable
+              style={styles.closeBtn}
+              onPress={onClose}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="Close token search"
+              accessibilityHint="Closes the token search sheet"
+            >
+              <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" accessible={false} />
             </Pressable>
           </View>
 
@@ -139,6 +146,9 @@ export default function TokenSearchSheet({
               placeholderTextColor="rgba(255,255,255,0.25)"
               value={searchQuery}
               onChangeText={setSearchQuery}
+              accessibilityLabel="Search tokens"
+              accessibilityHint="Enter token name or address"
+              accessibilityRole="search"
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')}>

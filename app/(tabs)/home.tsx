@@ -4,7 +4,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -110,18 +110,25 @@ export default function HomeScreen() {
   const [copied, setCopied] = useState(false);
   const [comingSoonModal, setComingSoonModal] = useState<string | null>(null);
   const [enabledSymbols, setEnabledSymbols] = useState<Set<string> | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadEnabledSymbols = useCallback(async () => {
-    const stored = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!stored) {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (!stored) {
+        setEnabledSymbols(null);
+        return;
+      }
+      const parsed = JSON.parse(stored) as Array<{ symbol: string; enabled: boolean }>;
+      const enabled = new Set(
+        parsed.filter((t) => t.enabled).map((t) => t.symbol.toUpperCase())
+      );
+      setEnabledSymbols(enabled);
+    } catch (error) {
+      console.warn('Failed to load enabled token symbols:', error);
       setEnabledSymbols(null);
-      return;
+      await AsyncStorage.removeItem(STORAGE_KEY);
     }
-    const parsed = JSON.parse(stored) as Array<{ symbol: string; enabled: boolean }>;
-    const enabled = new Set(
-      parsed.filter((t) => t.enabled).map((t) => t.symbol.toUpperCase())
-    );
-    setEnabledSymbols(enabled);
   }, []);
 
   useFocusEffect(
@@ -135,8 +142,19 @@ export default function HomeScreen() {
     await Clipboard.setStringAsync(activeWallet.fullAddress);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current);
+    }
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Action button handler
   const handleActionPress = (action: string) => {
@@ -502,6 +520,12 @@ export default function HomeScreen() {
         visible={searchSheetVisible}
         onClose={() => setSearchSheetVisible(false)}
         onSelectToken={(token) => {
+          const rawValue = token.value;
+          const numericValue = typeof rawValue === 'number'
+            ? rawValue
+            : Number(String(rawValue).replace(/[$,\s]/g, ''));
+          const normalizedValue = Number.isFinite(numericValue) ? numericValue : 0;
+
           // Navigate to send flow with selected token
           router.push({
             pathname: '/send-amount',
@@ -510,7 +534,7 @@ export default function HomeScreen() {
               name: token.name,
               network: token.network,
               balance: token.balance,
-              value: `$${token.value.toFixed(2)}`,
+              value: `$${normalizedValue.toFixed(2)}`,
             },
           });
         }}

@@ -9,12 +9,15 @@ export {
     ErrorBoundary
 } from 'expo-router';
 
-// DEV MODE: Set to false when implementing real wallet auth
-const DEV_MODE = true;
+const DEV_MODE = __DEV__ || process.env.EXPO_PUBLIC_DEV_MODE === 'true';
 
 export const unstable_settings = {
   initialRouteName: DEV_MODE ? '(tabs)' : 'index',
 };
+
+if (!__DEV__ && process.env.EXPO_PUBLIC_DEV_MODE === 'true') {
+  throw new Error('EXPO_PUBLIC_DEV_MODE must not be true for production builds.');
+}
 
 SplashScreen.preventAutoHideAsync();
 

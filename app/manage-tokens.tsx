@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+    Alert,
     Pressable,
     ScrollView,
     StatusBar,
@@ -13,6 +14,7 @@ import {
     View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import TokenIcon from '@/components/TokenIcon';
 
@@ -49,26 +51,40 @@ const ALL_TOKENS = [
 const STORAGE_KEY = 'auraw:manage-tokens';
 
 export default function ManageTokensScreen() {
+  const insets = useSafeAreaInsets();
   const [tokens, setTokens] = useState(ALL_TOKENS);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChain, setSelectedChain] = useState('all');
 
   useEffect(() => {
     const loadTokens = async () => {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
-      const parsed = JSON.parse(stored) as typeof ALL_TOKENS;
-      setTokens(parsed);
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!stored) return;
+        const parsed = JSON.parse(stored) as typeof ALL_TOKENS;
+        setTokens(parsed);
+      } catch (error) {
+        console.warn('Failed to load managed tokens:', error);
+        setTokens(ALL_TOKENS);
+        await AsyncStorage.removeItem(STORAGE_KEY);
+      }
     };
     loadTokens();
   }, []);
 
   const toggleToken = async (symbol: string) => {
+    const prevTokens = tokens;
     const nextTokens = tokens.map((t) =>
       t.symbol === symbol ? { ...t, enabled: !t.enabled } : t
     );
     setTokens(nextTokens);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextTokens));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextTokens));
+    } catch (error) {
+      setTokens(prevTokens);
+      console.warn('Failed to persist managed tokens:', error);
+      Alert.alert('Update failed', 'Could not save token visibility. Please try again.');
+    }
   };
 
   // Filter tokens
@@ -94,7 +110,7 @@ export default function ManageTokensScreen() {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </Pressable>
@@ -250,7 +266,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 58,
     paddingHorizontal: 16,
     paddingBottom: 16,
   },

@@ -52,7 +52,13 @@ export default function SendScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          accessibilityHint="Navigates to the previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </Pressable>
         <Text style={styles.title}>Send</Text>
@@ -71,7 +77,14 @@ export default function SendScreen() {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')}>
+            <Pressable
+              onPress={() => setSearchQuery('')}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              accessibilityHint="Clears the search input"
+              testID="clear-search-button"
+            >
               <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.3)" />
             </Pressable>
           )}
@@ -93,6 +106,9 @@ export default function SendScreen() {
             <Pressable
               style={styles.tokenRow}
               onPress={() => handleSelectToken(token)}
+              accessibilityRole="button"
+              accessibilityLabel={`${token.symbol} ${token.name}, balance ${token.balance}`}
+              accessibilityHint="Opens amount entry for this token"
             >
               <TokenIcon
                 symbol={token.symbol}

@@ -20,8 +20,7 @@ import AnimatedButton from '@/components/AnimatedButton';
 import AuraLogo from '@/components/AuraLogo';
 import VideoBackground from '@/components/VideoBackground';
 
-// DEV MODE: Set to false when implementing real wallet auth
-const DEV_MODE = true;
+const DEV_MODE = __DEV__ || process.env.EXPO_PUBLIC_DEV_MODE === 'true';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 

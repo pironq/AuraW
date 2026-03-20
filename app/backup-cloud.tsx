@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Platform,
   Pressable,
   StatusBar,
   StyleSheet,
@@ -9,16 +10,21 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function BackupCloudScreen() {
   const [icloudEnabled, setIcloudEnabled] = useState(false);
   const [driveEnabled, setDriveEnabled] = useState(false);
+  const insets = useSafeAreaInsets();
+  const showIcloud = Platform.OS === 'ios';
+  const showDrive = Platform.OS === 'android';
+  const showDivider = showIcloud && showDrive;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </Pressable>
@@ -32,33 +38,39 @@ export default function BackupCloudScreen() {
         </Text>
 
         <View style={styles.card}>
-          <View style={styles.row}>
-            <View>
-              <Text style={styles.rowTitle}>iCloud Backup</Text>
-              <Text style={styles.rowSub}>iOS encrypted backup</Text>
+          {showIcloud && (
+            <View style={styles.row}>
+              <View>
+                <Text style={styles.rowTitle}>iCloud Backup</Text>
+                <Text style={styles.rowSub}>iOS encrypted backup</Text>
+              </View>
+              <Switch
+                value={icloudEnabled}
+                onValueChange={setIcloudEnabled}
+                accessibilityLabel="Enable iCloud Backup"
+                trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(74,222,128,0.3)' }}
+                thumbColor={icloudEnabled ? '#4ade80' : 'rgba(255,255,255,0.5)'}
+              />
             </View>
-            <Switch
-              value={icloudEnabled}
-              onValueChange={setIcloudEnabled}
-              trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(74,222,128,0.3)' }}
-              thumbColor={icloudEnabled ? '#4ade80' : 'rgba(255,255,255,0.5)'}
-            />
-          </View>
+          )}
 
-          <View style={styles.divider} />
+          {showDivider && <View style={styles.divider} />}
 
-          <View style={styles.row}>
-            <View>
-              <Text style={styles.rowTitle}>Google Drive Backup</Text>
-              <Text style={styles.rowSub}>Android encrypted backup</Text>
+          {showDrive && (
+            <View style={styles.row}>
+              <View>
+                <Text style={styles.rowTitle}>Google Drive Backup</Text>
+                <Text style={styles.rowSub}>Android encrypted backup</Text>
+              </View>
+              <Switch
+                value={driveEnabled}
+                onValueChange={setDriveEnabled}
+                accessibilityLabel="Enable Google Drive Backup"
+                trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(74,222,128,0.3)' }}
+                thumbColor={driveEnabled ? '#4ade80' : 'rgba(255,255,255,0.5)'}
+              />
             </View>
-            <Switch
-              value={driveEnabled}
-              onValueChange={setDriveEnabled}
-              trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(74,222,128,0.3)' }}
-              thumbColor={driveEnabled ? '#4ade80' : 'rgba(255,255,255,0.5)'}
-            />
-          </View>
+          )}
         </View>
 
         <View style={styles.note}>
@@ -78,7 +90,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 58,
     paddingHorizontal: 16,
     paddingBottom: 16,
   },

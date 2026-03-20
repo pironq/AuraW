@@ -50,7 +50,13 @@ export default function ReceiveScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          accessibilityLabel="Back"
+          accessibilityRole="button"
+          accessibilityHint="Goes back to the previous screen"
+        >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </Pressable>
         <Text style={styles.title}>Receive</Text>
@@ -69,7 +75,12 @@ export default function ReceiveScreen() {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')}>
+            <Pressable
+              onPress={() => setSearchQuery('')}
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+              accessibilityHint="Clears the current search query"
+            >
               <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.3)" />
             </Pressable>
           )}
@@ -85,12 +96,16 @@ export default function ReceiveScreen() {
         <Text style={styles.sectionTitle}>Select Token to Receive</Text>
         {filteredTokens.map((token, index) => (
           <Animated.View
-            key={token.symbol}
+            key={`${token.symbol}-${token.network}`}
             entering={FadeInDown.delay(index * 50).duration(300)}
           >
             <Pressable
               style={styles.tokenRow}
               onPress={() => handleSelectToken(token)}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={`${token.symbol} token ${token.name} on ${token.network}`}
+              accessibilityHint="Tap to select this token"
             >
               <TokenIcon
                 symbol={token.symbol}

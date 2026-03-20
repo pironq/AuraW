@@ -3,6 +3,7 @@ import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
+    Alert,
     Pressable,
     StatusBar,
     StyleSheet,
@@ -16,9 +17,11 @@ import TokenIcon from '@/components/TokenIcon';
 
 // Mock recent addresses
 const RECENT_ADDRESSES = [
-  { address: '0x8f2e...4aBc', label: 'John Doe', time: '2 days ago' },
-  { address: '0x3a1D...9fEe', label: 'Trading Wallet', time: '1 week ago' },
+  { address: '0x8f2e1234567890abcdef1234567890abcdef4aBc', label: 'John Doe', time: '2 days ago' },
+  { address: '0x3a1D0987654321abcdef1234567890abcdef9fEe', label: 'Trading Wallet', time: '1 week ago' },
 ];
+
+const truncateAddress = (value: string) => `${value.slice(0, 8)}...${value.slice(-6)}`;
 
 export default function SendAddressScreen() {
   const params = useLocalSearchParams<{
@@ -43,8 +46,15 @@ export default function SendAddressScreen() {
   const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(address);
 
   const handlePaste = async () => {
-    const text = await Clipboard.getStringAsync();
-    if (text) setAddress(text.trim());
+    try {
+      const text = await Clipboard.getStringAsync();
+      if (text?.trim()) {
+        setAddress(text.trim());
+      }
+    } catch (error) {
+      console.error('Failed to read clipboard:', error);
+      Alert.alert('Clipboard error', 'Unable to access clipboard right now.');
+    }
   };
 
   const handleScanQR = () => {
@@ -69,8 +79,7 @@ export default function SendAddressScreen() {
   };
 
   const handleSelectRecent = (recentAddress: string) => {
-    // In real app, use full address
-    setAddress('0x8f2e1234567890abcdef1234567890abcdef4aBc');
+    setAddress(recentAddress);
   };
 
   return (
@@ -96,9 +105,11 @@ export default function SendAddressScreen() {
         />
         <View style={styles.summaryInfo}>
           <Text style={styles.summaryAmount}>
-            {parseFloat(params.amount || '0').toFixed(6)} {params.symbol}
+            {(Number.isFinite(Number(params.amount || '0')) ? Number(params.amount || '0') : 0).toFixed(6)} {params.symbol}
           </Text>
-          <Text style={styles.summaryValue}>${params.fiatValue} USD</Text>
+          <Text style={styles.summaryValue}>
+            ${(Number.isFinite(Number(params.fiatValue)) ? Number(params.fiatValue) : 0).toFixed(2)} USD
+          </Text>
         </View>
       </Animated.View>
 
@@ -108,7 +119,7 @@ export default function SendAddressScreen() {
         <View style={styles.inputRow}>
           <TextInput
             style={styles.addressInput}
-            placeholder="Enter address or ENS"
+            placeholder="Enter address"
             placeholderTextColor="rgba(255,255,255,0.25)"
             value={address}
             onChangeText={setAddress}
@@ -151,7 +162,7 @@ export default function SendAddressScreen() {
             </View>
             <View style={styles.recentInfo}>
               <Text style={styles.recentLabel}>{item.label}</Text>
-              <Text style={styles.recentAddress}>{item.address}</Text>
+              <Text style={styles.recentAddress}>{truncateAddress(item.address)}</Text>
             </View>
             <Text style={styles.recentTime}>{item.time}</Text>
           </Pressable>
