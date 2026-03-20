@@ -1,13 +1,13 @@
 import React from 'react';
 import {
-  Pressable,
-  StyleSheet,
-  ViewStyle
+    Pressable,
+    StyleSheet,
+    ViewStyle
 } from 'react-native';
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
 } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);

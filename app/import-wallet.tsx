@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as ExpoClipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
+import * as ExpoClipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {

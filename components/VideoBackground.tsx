@@ -4,12 +4,12 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useRef } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withTiming,
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSequence,
+    withTiming,
 } from 'react-native-reanimated';
 
 const { width: W, height: H } = Dimensions.get('window');

@@ -1,0 +1,42 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'AED', 'JPY'];
+
+export default function SettingsCurrencyScreen() {
+  const [selected, setSelected] = useState('USD');
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={styles.header}>
+        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </Pressable>
+        <Text style={styles.title}>Local Currency</Text>
+        <View style={styles.placeholder} />
+      </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {CURRENCIES.map((currency) => (
+          <Pressable key={currency} style={styles.row} onPress={() => setSelected(currency)}>
+            <Text style={styles.rowText}>{currency}</Text>
+            {selected === currency && <Ionicons name="checkmark" size={20} color="#4ade80" />}
+          </Pressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#000' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 58, paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  placeholder: { width: 40 },
+  content: { paddingHorizontal: 16, paddingBottom: 28 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 8 },
+  rowText: { fontSize: 15, fontWeight: '600', color: '#fff' },
+});

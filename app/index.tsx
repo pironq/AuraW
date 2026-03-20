@@ -1,28 +1,36 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
-  Dimensions,
-  StatusBar,
-  StyleSheet,
-  View,
+    Dimensions,
+    StatusBar,
+    StyleSheet,
+    View,
 } from 'react-native';
 import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSpring,
-  withTiming
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSpring,
+    withTiming
 } from 'react-native-reanimated';
 
 import AnimatedButton from '@/components/AnimatedButton';
 import AuraLogo from '@/components/AuraLogo';
 import VideoBackground from '@/components/VideoBackground';
 
+// DEV MODE: Set to false when implementing real wallet auth
+const DEV_MODE = true;
+
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function WelcomeScreen() {
+  // In dev mode, skip to home screen directly
+  if (DEV_MODE) {
+    return <Redirect href="/(tabs)/home" />;
+  }
+
   // Animation values
   const logoOpacity = useSharedValue(0);
   const logoScale = useSharedValue(0.5);
