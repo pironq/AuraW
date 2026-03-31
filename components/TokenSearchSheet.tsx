@@ -1,30 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+    Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TextInput,
     View,
 } from 'react-native';
 import Animated, {
+    Easing,
     FadeIn,
     FadeOut,
-    SlideInDown,
+    SlideInUp,
     SlideOutDown,
 } from 'react-native-reanimated';
 
-import TokenIcon from './TokenIcon';
+import TokenIcon, { CHAIN_LOGOS } from './TokenIcon';
 
 // Available chains for filtering
 const CHAINS = [
-  { id: 'all', name: 'All Chains', icon: 'layers-outline' as const },
-  { id: 'ethereum', name: 'Ethereum', icon: 'flash-outline' as const },
-  { id: 'arbitrum', name: 'Arbitrum', icon: 'git-network-outline' as const },
-  { id: 'base', name: 'Base', icon: 'radio-button-on-outline' as const },
-  { id: 'bsc', name: 'BNB Chain', icon: 'globe-outline' as const },
+  { id: 'all', name: 'All Chains', logo: null },
+  { id: 'ethereum', name: 'Ethereum', logo: CHAIN_LOGOS.ethereum },
+  { id: 'arbitrum', name: 'Arbitrum', logo: CHAIN_LOGOS.arbitrum },
+  { id: 'base', name: 'Base', logo: CHAIN_LOGOS.base },
+  { id: 'bsc', name: 'BNB Chain', logo: CHAIN_LOGOS.bsc },
 ];
 
 // All available tokens (held + zero balance)
@@ -63,6 +68,8 @@ export default function TokenSearchSheet({
 }: TokenSearchSheetProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChain, setSelectedChain] = useState('all');
+
+  const searchInputRef = useRef<TextInput>(null);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -106,161 +113,174 @@ export default function TokenSearchSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <Animated.View
         entering={FadeIn.duration(200)}
-        exiting={FadeOut.duration(200)}
+        exiting={FadeOut.duration(150)}
         style={styles.overlay}
       >
-        <Pressable style={styles.backdrop} onPress={onClose} />
-
         <Animated.View
-          entering={SlideInDown.duration(300).springify().damping(20)}
-          exiting={SlideOutDown.duration(300)}
+          entering={SlideInUp.duration(350).easing(Easing.out(Easing.cubic))}
+          exiting={SlideOutDown.duration(250).easing(Easing.in(Easing.cubic))}
           style={styles.sheet}
         >
-          {/* Handle */}
-          <View style={styles.handle} />
+          <StatusBar barStyle="light-content" />
 
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Select Token</Text>
-            <Pressable
-              style={styles.closeBtn}
-              onPress={onClose}
-              accessible
-              accessibilityRole="button"
-              accessibilityLabel="Close token search"
-              accessibilityHint="Closes the token search sheet"
-            >
-              <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" accessible={false} />
-            </Pressable>
-          </View>
-
-          {/* Search Bar */}
-          <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.3)" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by name or symbol..."
-              placeholderTextColor="rgba(255,255,255,0.25)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              accessibilityLabel="Search tokens"
-              accessibilityHint="Enter token name or address"
-              accessibilityRole="search"
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.3)" />
-              </Pressable>
-            )}
-          </View>
-
-          {/* Chain Filter */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chainScroll}
-            contentContainerStyle={styles.chainScrollContent}
+          <KeyboardAvoidingView
+            style={styles.keyboardView}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
-            {CHAINS.map(chain => (
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.title}>Search</Text>
               <Pressable
-                key={chain.id}
-                style={[
-                  styles.chainChip,
-                  selectedChain === chain.id && styles.chainChipActive,
-                ]}
-                onPress={() => setSelectedChain(chain.id)}
+                style={styles.closeBtn}
+                onPress={onClose}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Close token search"
+                accessibilityHint="Closes the token search sheet"
               >
-                <Ionicons
-                  name={chain.icon}
-                  size={14}
-                  color={selectedChain === chain.id ? '#fff' : 'rgba(255,255,255,0.5)'}
-                />
-                <Text
-                  style={[
-                    styles.chainChipText,
-                    selectedChain === chain.id && styles.chainChipTextActive,
-                  ]}
-                >
-                  {chain.name}
-                </Text>
+                <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" accessible={false} />
               </Pressable>
-            ))}
-          </ScrollView>
+            </View>
 
-          {/* Token List */}
-          <ScrollView
-            style={styles.tokenList}
-            contentContainerStyle={styles.tokenListContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Held Tokens */}
-            {heldTokens.length > 0 && (
-              <>
-                <Text style={styles.sectionTitle}>Your Tokens</Text>
-                {heldTokens.map(token => (
-                  <Pressable
-                    key={`${token.symbol}-${token.network}`}
-                    style={styles.tokenRow}
-                    onPress={() => handleSelectToken(token)}
-                  >
-                    <TokenIcon
-                      symbol={token.symbol}
-                      size={40}
-                      showChainBadge={token.network !== 'ethereum'}
-                      chain={token.network}
+            {/* Search Bar */}
+            <View style={styles.searchBar}>
+              <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.3)" />
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                placeholder="Search by name or symbol..."
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoFocus
+                accessibilityLabel="Search tokens"
+                accessibilityHint="Enter token name or symbol"
+                accessibilityRole="search"
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.3)" />
+                </Pressable>
+              )}
+            </View>
+
+            {/* Chain Filter */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chainScroll}
+              contentContainerStyle={styles.chainScrollContent}
+            >
+              {CHAINS.map(chain => (
+                <Pressable
+                  key={chain.id}
+                  style={[
+                    styles.chainChip,
+                    selectedChain === chain.id && styles.chainChipActive,
+                  ]}
+                  onPress={() => setSelectedChain(chain.id)}
+                >
+                  {chain.logo ? (
+                    <Image
+                      source={{ uri: chain.logo }}
+                      style={styles.chainLogo}
                     />
-                    <View style={styles.tokenInfo}>
-                      <Text style={styles.tokenSymbol}>{token.symbol}</Text>
-                      <Text style={styles.tokenName}>{token.name}</Text>
-                    </View>
-                    <View style={styles.tokenValues}>
-                      <Text style={styles.tokenBalance}>{token.balance}</Text>
-                      <Text style={styles.tokenValue}>${token.value.toFixed(2)}</Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </>
-            )}
-
-            {/* Zero Balance Tokens */}
-            {zeroBalanceTokens.length > 0 && (
-              <>
-                <Text style={styles.sectionTitle}>Other Tokens</Text>
-                {zeroBalanceTokens.map(token => (
-                  <Pressable
-                    key={`${token.symbol}-${token.network}`}
-                    style={[styles.tokenRow, styles.tokenRowDimmed]}
-                    onPress={() => handleSelectToken(token)}
-                  >
-                    <TokenIcon
-                      symbol={token.symbol}
-                      size={40}
-                      showChainBadge={token.network !== 'ethereum'}
-                      chain={token.network}
+                  ) : (
+                    <Ionicons
+                      name="layers-outline"
+                      size={14}
+                      color={selectedChain === chain.id ? '#fff' : 'rgba(255,255,255,0.5)'}
                     />
-                    <View style={styles.tokenInfo}>
-                      <Text style={[styles.tokenSymbol, styles.tokenSymbolDimmed]}>
-                        {token.symbol}
-                      </Text>
-                      <Text style={styles.tokenName}>{token.name}</Text>
-                    </View>
-                    <Text style={styles.zeroBalance}>$0.00</Text>
-                  </Pressable>
-                ))}
-              </>
-            )}
+                  )}
+                  <Text
+                    style={[
+                      styles.chainChipText,
+                      selectedChain === chain.id && styles.chainChipTextActive,
+                    ]}
+                  >
+                    {chain.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
 
-            {/* Empty State */}
-            {filteredTokens.length === 0 && (
-              <View style={styles.emptyState}>
-                <Ionicons name="search-outline" size={48} color="rgba(255,255,255,0.15)" />
-                <Text style={styles.emptyText}>No tokens found</Text>
-              </View>
-            )}
-          </ScrollView>
+            {/* Token List */}
+            <ScrollView
+              style={styles.tokenList}
+              contentContainerStyle={styles.tokenListContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
+              {/* Held Tokens */}
+              {heldTokens.length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>Your Tokens</Text>
+                  {heldTokens.map(token => (
+                    <Pressable
+                      key={`${token.symbol}-${token.network}`}
+                      style={styles.tokenRow}
+                      onPress={() => handleSelectToken(token)}
+                    >
+                      <TokenIcon
+                        symbol={token.symbol}
+                        size={40}
+                        showChainBadge={token.network !== 'ethereum'}
+                        chain={token.network}
+                      />
+                      <View style={styles.tokenInfo}>
+                        <Text style={styles.tokenSymbol}>{token.symbol}</Text>
+                        <Text style={styles.tokenName}>{token.name}</Text>
+                      </View>
+                      <View style={styles.tokenValues}>
+                        <Text style={styles.tokenBalance}>{token.balance}</Text>
+                        <Text style={styles.tokenValue}>${token.value.toFixed(2)}</Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </>
+              )}
+
+              {/* Zero Balance Tokens */}
+              {zeroBalanceTokens.length > 0 && (
+                <>
+                  <Text style={styles.sectionTitle}>Other Tokens</Text>
+                  {zeroBalanceTokens.map(token => (
+                    <Pressable
+                      key={`${token.symbol}-${token.network}`}
+                      style={[styles.tokenRow, styles.tokenRowDimmed]}
+                      onPress={() => handleSelectToken(token)}
+                    >
+                      <TokenIcon
+                        symbol={token.symbol}
+                        size={40}
+                        showChainBadge={token.network !== 'ethereum'}
+                        chain={token.network}
+                      />
+                      <View style={styles.tokenInfo}>
+                        <Text style={[styles.tokenSymbol, styles.tokenSymbolDimmed]}>
+                          {token.symbol}
+                        </Text>
+                        <Text style={styles.tokenName}>{token.name}</Text>
+                      </View>
+                      <Text style={styles.zeroBalance}>$0.00</Text>
+                    </Pressable>
+                  ))}
+                </>
+              )}
+
+              {/* Empty State */}
+              {filteredTokens.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Ionicons name="search-outline" size={48} color="rgba(255,255,255,0.15)" />
+                  <Text style={styles.emptyText}>No tokens found</Text>
+                </View>
+              )}
+            </ScrollView>
+          </KeyboardAvoidingView>
         </Animated.View>
       </Animated.View>
     </Modal>
@@ -270,29 +290,14 @@ export default function TokenSearchSheet({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
   },
   sheet: {
-    backgroundColor: '#0a0a0a',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: 'rgba(255,255,255,0.08)',
+    flex: 1,
+    backgroundColor: '#000',
+    paddingTop: Platform.OS === 'ios' ? 54 : (StatusBar.currentHeight ?? 0) + 8,
   },
-  handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 8,
+  keyboardView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -356,6 +361,11 @@ const styles = StyleSheet.create({
   chainChipActive: {
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderColor: 'rgba(255,255,255,0.15)',
+  },
+  chainLogo: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
   },
   chainChipText: {
     fontSize: 13,

@@ -72,6 +72,7 @@ export default function RootLayout() {
         <Stack.Screen name="change-pin" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="export-wallet" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="reset-wallet" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="token-detail" options={{ animation: 'slide_from_right' }} />
       </Stack>
     </ThemeProvider>
   );

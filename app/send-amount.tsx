@@ -2,6 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
     Pressable,
     StatusBar,
     StyleSheet,
@@ -62,7 +65,11 @@ export default function SendAmountScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+    <Pressable style={styles.inner} onPress={Keyboard.dismiss}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Header */}
@@ -110,7 +117,7 @@ export default function SendAmountScreen() {
           )}
         </View>
 
-        {/* Equivalent value */}
+        {/* Switch currency mode */}
         <Pressable
           style={styles.equivalentRow}
           onPress={() => {
@@ -121,11 +128,9 @@ export default function SendAmountScreen() {
             setIsFiatMode(!isFiatMode);
           }}
         >
-          <Ionicons name="swap-vertical" size={14} color="rgba(255,255,255,0.4)" />
+          <Ionicons name="swap-vertical" size={16} color="rgba(255,255,255,0.5)" />
           <Text style={styles.equivalentText}>
-            {isFiatMode
-              ? `${tokenAmount.toFixed(6)} ${params.symbol}`
-              : `$${fiatValue.toFixed(2)} USD`}
+            {isFiatMode ? params.symbol : 'USD'}
           </Text>
         </Pressable>
 
@@ -178,7 +183,8 @@ export default function SendAmountScreen() {
           </Text>
         </Pressable>
       </View>
-    </View>
+    </Pressable>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -186,6 +192,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  inner: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

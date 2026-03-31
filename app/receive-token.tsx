@@ -6,7 +6,6 @@ import React, { useRef, useState } from 'react';
 import {
     Pressable,
     ScrollView,
-    Share,
     StatusBar,
     StyleSheet,
     Text,
@@ -29,13 +28,13 @@ export default function ReceiveTokenScreen() {
     symbol: string;
     name: string;
     network: string;
+    address: string;
   }>();
 
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Mock wallet address
-  const walletAddress = '0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b';
+  const walletAddress = params.address || '0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b';
   const truncatedAddress = `${walletAddress.slice(0, 10)}...${walletAddress.slice(-8)}`;
 
   const handleCopy = async () => {
@@ -46,12 +45,6 @@ export default function ReceiveTokenScreen() {
       clearTimeout(copyTimeoutRef.current);
     }
     copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleShare = async () => {
-    await Share.share({
-      message: `My ${params.symbol} address: ${walletAddress}`,
-    });
   };
 
   return (
@@ -103,45 +96,35 @@ export default function ReceiveTokenScreen() {
 
           <View style={styles.addressSection}>
             <Text style={styles.addressLabel}>Your Address</Text>
-            <Text style={styles.addressText}>{truncatedAddress}</Text>
-          </View>
-
-          <View style={styles.actionButtons}>
-            <Pressable style={styles.actionBtn} onPress={handleCopy}>
-              {copied ? (
-                <Animated.View
-                  entering={FadeIn.duration(150)}
-                  exiting={FadeOut.duration(150)}
-                  style={styles.actionBtnInner}
-                >
-                  <Ionicons name="checkmark" size={20} color="#4ade80" />
-                  <Text style={[styles.actionBtnText, { color: '#4ade80' }]}>Copied!</Text>
-                </Animated.View>
-              ) : (
-                <View style={styles.actionBtnInner}>
-                  <Ionicons name="copy-outline" size={20} color="#fff" />
-                  <Text style={styles.actionBtnText}>Copy</Text>
-                </View>
-              )}
-            </Pressable>
-
-            <Pressable style={styles.actionBtn} onPress={handleShare}>
-              <View style={styles.actionBtnInner}>
-                <Ionicons name="share-outline" size={20} color="#fff" />
-                <Text style={styles.actionBtnText}>Share</Text>
+            <Pressable style={styles.addressRow} onPress={handleCopy}>
+              <Text style={styles.addressText} numberOfLines={1} ellipsizeMode="middle">
+                {walletAddress}
+              </Text>
+              <View style={styles.copyBtn}>
+                {copied ? (
+                  <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)}>
+                    <Ionicons name="checkmark" size={16} color="#4ade80" />
+                  </Animated.View>
+                ) : (
+                  <Ionicons name="copy-outline" size={16} color="rgba(255,255,255,0.6)" />
+                )}
               </View>
             </Pressable>
+            {copied && (
+              <Animated.Text entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} style={styles.copiedFeedback}>
+                Copied!
+              </Animated.Text>
+            )}
           </View>
         </Animated.View>
 
-        {/* Warning */}
-        <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.warningCard}>
-          <Ionicons name="warning-outline" size={18} color="#fbbf24" />
-          <Text style={styles.warningText}>
-            Only send {params.symbol} on{' '}
+        {/* Network Info */}
+        <Animated.View entering={FadeInDown.delay(100).duration(300)} style={styles.networkCard}>
+          <Ionicons name="globe-outline" size={16} color="rgba(255,255,255,0.5)" />
+          <Text style={styles.networkCardText}>
+            This address receives {params.symbol} on{' '}
             {(params.network || 'ethereum').charAt(0).toUpperCase() +
-              (params.network || 'ethereum').slice(1)}{' '}
-            network to this address. Sending other tokens may result in permanent loss.
+              (params.network || 'ethereum').slice(1)}
           </Text>
         </Animated.View>
 
@@ -240,60 +223,63 @@ const styles = StyleSheet.create({
   },
   addressSection: {
     alignItems: 'center',
-    marginBottom: 20,
+    gap: 8,
   },
   addressLabel: {
     fontSize: 12,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.4)',
-    marginBottom: 6,
+    marginBottom: 2,
   },
-  addressText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-    fontFamily: 'monospace',
-    letterSpacing: 0.5,
-  },
-  actionButtons: {
+  addressRow: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  actionBtn: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingVertical: 14,
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
-  actionBtnInner: {
-    flexDirection: 'row',
+  addressText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+    fontFamily: 'SpaceMono',
+  },
+  copyBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
   },
-  actionBtnText: {
-    fontSize: 14,
+  copiedFeedback: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
+    color: '#4ade80',
+    marginTop: 2,
   },
-  warningCard: {
+  networkCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 10,
     marginTop: 16,
     padding: 14,
     borderRadius: 12,
-    backgroundColor: 'rgba(251,191,36,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.15)',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  warningText: {
+  networkCardText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
-    color: 'rgba(251,191,36,0.9)',
+    color: 'rgba(255,255,255,0.45)',
     lineHeight: 18,
   },
   sectionTitle: {

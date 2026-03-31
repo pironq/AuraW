@@ -1,28 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
+    Modal,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import Animated, {
-  Easing,
-  FadeIn,
-  FadeInDown,
-  FadeOut,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withTiming,
+    Easing,
+    FadeIn,
+    FadeInDown,
+    FadeOut,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withTiming,
 } from 'react-native-reanimated';
 
 import TokenIcon from '@/components/TokenIcon';
@@ -351,7 +351,20 @@ export default function HomeScreen() {
                   key={token.symbol}
                   entering={FadeInDown.delay(500 + index * 60).duration(350)}
                 >
-                  <Pressable style={styles.tokenRow}>
+                  <Pressable style={styles.tokenRow} onPress={() => router.push({
+                    pathname: '/token-detail',
+                    params: {
+                      symbol: token.symbol,
+                      name: token.name,
+                      balance: token.balance,
+                      value: token.value,
+                      price: token.price,
+                      change: token.change,
+                      positive: String(token.positive),
+                      network: token.network,
+                      address: activeWallet.fullAddress,
+                    },
+                  })}>
                     <View style={styles.tokenIconWrap}>
                       <TokenIcon
                         symbol={token.symbol}
